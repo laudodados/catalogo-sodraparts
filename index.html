@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Sodraparts - Catálogo de Peças de Reposição</title>
     
-    <link rel="icon" type="image/x-icon" href="./icone.ico" />
-    
     <style>
         /* ==========================================================================
            1. VARIÁVEIS E RESET
@@ -35,36 +33,7 @@
         }
 
         /* ==========================================================================
-           2. TELA DE CARREGAMENTO (PRE-LOADER)
-           ========================================================================== */
-        #tela-carregamento {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-color: #ffffff;
-            z-index: 999999;
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            transition: opacity 0.3s ease, visibility 0.3s;
-        }
-        .loader-spinner {
-            width: 50px; height: 50px;
-            border: 5px solid #e2e8f0;
-            border-top-color: var(--cor-destaque);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        .loader-texto {
-            margin-top: 20px;
-            color: var(--cor-primaria);
-            font-weight: bold;
-            font-size: 18px;
-            text-align: center;
-        }
-        .loader-subtexto { color: #64748b; font-size: 14px; margin-top: 5px; }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-
-        /* ==========================================================================
-           3. LAYOUT GERAL E BLOQUEIO NATIVO DE LAG (TOUCH-ACTION)
+           2. LAYOUT GERAL
            ========================================================================== */
         header { background-color: #ffffff; height: 70px; border-bottom: 1px solid var(--cor-borda); display: flex; align-items: center; padding: 0 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); z-index: 10; flex-shrink: 0; }
         .logo-container { display: flex; align-items: center; }
@@ -81,19 +50,11 @@
         .menu-item.ativo { border-left: 4px solid var(--cor-destaque); background-color: #f0f8ff; color: var(--cor-primaria); }
 
         .main-content { flex: 1; display: flex; flex-direction: column; padding: 20px; position: relative; min-width: 0; }
-        
-        /* AQUI ACONTECE A MÁGICA DE PERFORMANCE MOBILE: touch-action: none */
-        .svg-wrapper { 
-            background-color: #ffffff; border: 1px solid var(--cor-borda); border-radius: 8px; 
-            flex: 1; overflow: hidden; display: flex; align-items: center; justify-content: center; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.03); position: relative; cursor: grab; 
-            touch-action: none; 
-        }
+        .svg-wrapper { background-color: #ffffff; border: 1px solid var(--cor-borda); border-radius: 8px; flex: 1; overflow: hidden; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.03); position: relative; cursor: grab; }
         .svg-wrapper:active { cursor: grabbing; }
+        #svg-content { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
         
-        #svg-content { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; }
-        .svg-view { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: absolute; top: 0; left: 0; }
-        
+        /* PERFORMANCE INSTANTÂNEA: Vector-effect global */
         svg { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
         svg path, svg line, svg polygon, svg rect, svg circle, svg polyline, svg ellipse { 
             vector-effect: non-scaling-stroke !important; 
@@ -103,42 +64,69 @@
         .zoom-btn { width: 36px; height: 36px; background-color: #ffffff; border: 1px solid var(--cor-borda); border-radius: 4px; font-size: 20px; font-weight: bold; color: var(--cor-primaria); cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
         .zoom-btn:hover { background-color: var(--cor-fundo); color: var(--cor-destaque); border-color: var(--cor-destaque); }
         
-        .instrucao-zoom { position: absolute; bottom: 20px; left: 20px; font-size: 13px; color: #64748b; background: rgba(255,255,255,0.95); padding: 8px 14px; border-radius: 6px; pointer-events: none; box-shadow: 0 4px 10px rgba(0,0,0,0.08); border: 1px solid var(--cor-borda); transition: opacity 0.4s ease, transform 0.4s ease; opacity: 1; transform: translateY(0); z-index: 20; }
+        .instrucao-zoom { position: absolute; bottom: 20px; left: 20px; font-size: 13px; color: #64748b; background: rgba(255,255,255,0.95); padding: 8px 14px; border-radius: 6px; pointer-events: none; box-shadow: 0 4px 10px rgba(0,0,0,0.08); border: 1px solid var(--cor-borda); transition: opacity 0.4s ease, transform 0.4s ease; opacity: 1; transform: translateY(0); }
         .instrucao-zoom.oculta { opacity: 0; transform: translateY(10px); }
+        #loading { position: absolute; font-size: 18px; color: var(--cor-primaria); font-weight: bold; display: none; }
 
         /* ==========================================================================
-           4. ESTILIZAÇÃO DO DESENHO E HITBOX AVANÇADA
+           3. ESTILIZAÇÃO DO DESENHO E LÓGICA DE FOCO IMERSIVA
            ========================================================================== */
-        .peca-interativa { cursor: pointer; pointer-events: visiblePainted; transition: opacity 0.2s ease; }
+        .peca-interativa { cursor: pointer; pointer-events: all; transition: opacity 0.4s ease; }
         
-        .peca-interativa.destaque-ativo path, .peca-interativa.destaque-ativo line, .peca-interativa.destaque-ativo polygon, .peca-interativa.destaque-ativo rect, .peca-interativa.destaque-ativo circle, .peca-interativa.destaque-ativo polyline, .peca-interativa.destaque-ativo ellipse {
-            stroke: var(--cor-destaque) !important; stroke-width: 1.8px !important;
+        /* HOVER: Ilumina o contorno. Não tocamos no "fill" para não bugar o CAD. */
+        .peca-interativa.destaque-ativo path,
+        .peca-interativa.destaque-ativo line,
+        .peca-interativa.destaque-ativo polygon,
+        .peca-interativa.destaque-ativo rect,
+        .peca-interativa.destaque-ativo circle,
+        .peca-interativa.destaque-ativo polyline,
+        .peca-interativa.destaque-ativo ellipse {
+            stroke: var(--cor-destaque) !important;
+            stroke-width: 1.8px !important;
         }
-        .peca-interativa.focada path, .peca-interativa.focada line, .peca-interativa.focada polygon, .peca-interativa.focada rect, .peca-interativa.focada circle, .peca-interativa.focada polyline, .peca-interativa.focada ellipse {
-            stroke: var(--cor-primaria) !important; stroke-width: 2.2px !important;
+        
+        /* CLIQUE (FOCO): Destaque da linha em azul mais forte */
+        .peca-interativa.focada path,
+        .peca-interativa.focada line,
+        .peca-interativa.focada polygon,
+        .peca-interativa.focada rect,
+        .peca-interativa.focada circle,
+        .peca-interativa.focada polyline,
+        .peca-interativa.focada ellipse {
+            stroke: var(--cor-primaria) !important;
+            stroke-width: 2.2px !important;
         }
 
-        .peca-interativa .hitbox-peca path, .peca-interativa .hitbox-peca line, .peca-interativa .hitbox-peca polygon, .peca-interativa .hitbox-peca rect, .peca-interativa .hitbox-peca circle, .peca-interativa .hitbox-peca polyline, .peca-interativa .hitbox-peca ellipse {
-            stroke: rgba(255, 255, 255, 0) !important; stroke-width: 18px !important; fill: none !important; pointer-events: stroke !important;
+        /* --- MODO FOCO IMERSIVO --- */
+        /* Ofusca todas as peças que NÃO estão focadas (Aplicado ao grupo .peca-interativa inteiro para preservar brancos) */
+        svg.modo-foco .peca-interativa:not(.focada) {
+            opacity: 0.15;
         }
 
-        svg.modo-foco .peca-interativa:not(.focada) { opacity: 0.15; }
-        svg.modo-foco .peca-interativa.focada { opacity: 1 !important; }
+        /* Garante que a peça focada continua sólida a 100% */
+        svg.modo-foco .peca-interativa.focada {
+            opacity: 1 !important;
+        }
 
         /* ==========================================================================
-           5. TOOLTIP E MENU DIREITO
+           4. CAIXA DE INFORMAÇÕES DO RATO (TOOLTIP)
            ========================================================================== */
         #tooltip {
-            position: absolute; background-color: rgba(20, 25, 30, 0.95); color: #ffffff; padding: 10px 14px;
-            border-radius: 6px; font-size: 13px; line-height: 1.4; pointer-events: none; box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.2);
-            border-left: 4px solid var(--cor-destaque); text-align: left; z-index: 9999; display: none; 
+            position: absolute;
+            background-color: rgba(20, 25, 30, 0.95); color: #ffffff; padding: 10px 14px;
+            border-radius: 6px; font-size: 13px; line-height: 1.4; 
+            pointer-events: none; box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.2);
+            border-left: 4px solid var(--cor-destaque); text-align: left;
+            z-index: 9999; display: none; 
         }
         #nome_peca { font-size: 14px; display: block; margin-bottom: 4px; color: var(--cor-destaque); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px; }
 
+        /* ==========================================================================
+           5. MENU LATERAL DIREITO (LISTAGEM E VARIANTES)
+           ========================================================================== */
         .sidebar-right { width: 400px; background-color: #ffffff; border-left: 1px solid var(--cor-borda); display: flex; flex-direction: column; box-shadow: -2px 0 5px rgba(0,0,0,0.02); z-index: 5; flex-shrink: 0; }
         .lista-header { padding: 20px; background-color: var(--cor-primaria); color: #ffffff; font-size: 16px; font-weight: bold; flex-shrink: 0;}
-        .lista-pecas { flex: 1; overflow-y: auto; padding: 15px; position: relative; }
-        .lista-view { position: absolute; top: 0; left: 0; width: 100%; padding: 15px; }
+        .lista-pecas { flex: 1; overflow-y: auto; padding: 15px; }
 
         .peca-card { border: 1px solid var(--cor-borda); border-radius: 6px; margin-bottom: 10px; background-color: #fff; transition: all 0.1s ease; overflow: hidden; }
         .peca-card-header { display: flex; align-items: center; padding: 12px 15px; cursor: pointer; }
@@ -167,7 +155,7 @@
         .lista-pecas::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
 
         /* ==========================================================================
-           6. MODO MOBILE (CELULARES E TABLETS) - BOTÕES PÍLULA
+           6. MODO MOBILE (CELULARES E TABLETS)
            ========================================================================== */
         @media (max-width: 900px) {
             header { padding: 0 15px; height: 60px; }
@@ -175,56 +163,35 @@
             .logo-container img { height: 30px; }
             
             .layout-container { flex-direction: column; }
-            
-            .sidebar-left { 
-                width: 100%; border-right: none; border-bottom: 1px solid var(--cor-borda); 
-                flex-direction: row; align-items: center; padding: 0 15px; height: 65px; 
-                background: #f8fafc; gap: 12px; overflow-x: auto;
-                -ms-overflow-style: none; scrollbar-width: none; 
-            }
-            .sidebar-left::-webkit-scrollbar { display: none; }
-            
+            .sidebar-left { width: 100%; border-right: none; border-bottom: 1px solid var(--cor-borda); flex-direction: row; overflow-x: auto; padding: 0; height: 50px; }
             .menu-titulo { display: none; }
-            .menu-item { 
-                padding: 10px 20px; white-space: nowrap; border: 1px solid var(--cor-borda); 
-                border-radius: 30px; background-color: #ffffff; font-size: 14px; flex-shrink: 0;
-            }
-            .menu-item.ativo { 
-                border: 1px solid var(--cor-primaria) !important; 
-                background-color: var(--cor-primaria) !important; 
-                color: #ffffff !important; 
-            }
+            .menu-item { padding: 15px; white-space: nowrap; border-left: none; border-bottom: 4px solid transparent; }
+            .menu-item.ativo { border-left: none; border-bottom: 4px solid var(--cor-destaque); background-color: transparent; }
             
             .main-content { padding: 10px; flex: unset; height: 45vh; }
             .instrucao-zoom { font-size: 11px; padding: 5px 10px; max-width: 80%; }
             .zoom-controls { top: 10px; right: 10px; }
             .zoom-btn { width: 30px; height: 30px; font-size: 18px; }
 
-            .sidebar-right { width: 100%; border-left: none; border-top: 1px solid var(--cor-borda); height: calc(55vh - 60px - 65px); }
+            .sidebar-right { width: 100%; border-left: none; border-top: 1px solid var(--cor-borda); height: calc(55vh - 60px - 50px); }
             
             #tooltip { display: none !important; }
         }
     </style>
     
-    <script src="trocador_svg.min.js"></script>
-    <script src="sauna_svg.min.js"></script>
+    <!-- CARREGAMENTO DOS FICHEIROS SVG EXTERNOS -->
+    <script src="trocador_svg.js"></script>
+    <script src="sauna_svg.js"></script>
 
 </head>
 <body>
 
-    <!-- TELA DE CARREGAMENTO INTELIGENTE -->
-    <div id="tela-carregamento">
-        <div class="loader-spinner"></div>
-        <div class="loader-texto" id="texto-carregamento">A iniciar Catálogo...</div>
-        <div class="loader-subtexto">Otimizando modelos 3D de alta precisão</div>
-    </div>
-
     <header>
         <div class="logo-container">
-            <img src="./logo_sodraparts.png?v=3" alt="Sodraparts" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+            <img src="logo_sodraparts.png" alt="Sodraparts" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
             <span class="logo-fallback" style="display:none;">SODRAPARTS</span>
         </div>
-        <div class="header-title" id="titulo-pagina">A preparar...</div>
+        <div class="header-title" id="titulo-pagina">Selecione um Produto...</div>
     </header>
 
     <div class="layout-container">
@@ -237,6 +204,7 @@
 
         <main class="main-content">
             <div class="svg-wrapper" id="svg-wrapper">
+                <div id="loading">A carregar modelo 3D...</div>
                 <div id="svg-content"></div>
                 
                 <div class="zoom-controls">
@@ -258,6 +226,7 @@
 
     </div>
 
+    <!-- CAIXA DE INFORMAÇÕES FLUTUANTE (Tooltip) -->
     <div id="tooltip">
         <strong id="nome_peca">Nome da Peça</strong><br />
         Cód RP: <span id="cod_rp"></span><br />
@@ -270,17 +239,26 @@
         // ===================================================================================
         const baseDeDados = {
             trocador: {
-                id: "trocador",
                 titulo: "Trocador de Calor New SD - Vista Explodida",
                 variavelSVG: typeof trocadorSVG !== 'undefined' ? trocadorSVG : null,
                 pecas: [
                     { id: "grade", nome: "Grade Plástica", bolha_X: 60, bolha_Y: -40, variantes: [{ nome: "Padrão", rp: "TC-GR-01", compra: "1200-A" }] },
                     { id: "helice", nome: "Hélice", bolha_X: 70, bolha_Y: -20, variantes: [{ nome: "Padrão", rp: "TC-HL-02", compra: "1200-B" }] },
-                    { id: "motor", nome: "Motor Ventilador", bolha_X: 70, bolha_Y: 10, variantes: [{ nome: "Motor 1/4 HP - 220V", rp: "TC-MV-03-A", compra: "1200-C1" }, { nome: "Motor 1/3 HP - 220V", rp: "TC-MV-03-B", compra: "1200-C2" }] },
+                    { id: "motor", nome: "Motor Ventilador", bolha_X: 70, bolha_Y: 10, 
+                      variantes: [
+                          { nome: "Motor 1/4 HP - 220V", rp: "TC-MV-03-A", compra: "1200-C1" },
+                          { nome: "Motor 1/3 HP - 220V", rp: "TC-MV-03-B", compra: "1200-C2" }
+                      ] 
+                    },
                     { id: "pressostatoalta", nome: "Pressostato de Alta", bolha_X: -65, bolha_Y: -20, variantes: [{ nome: "Padrão", rp: "TC-PA-04", compra: "1200-D" }] },
                     { id: "pressostatobaixa", nome: "Pressostato de Baixa", bolha_X: 15, bolha_Y: 30, variantes: [{ nome: "Padrão", rp: "TC-PB-05", compra: "1200-E" }] },
                     { id: "filtro", nome: "Filtro", bolha_X: -10, bolha_Y: 45, variantes: [{ nome: "Padrão", rp: "TC-FL-06", compra: "1200-F" }] },
-                    { id: "compressor", nome: "Compressor", bolha_X: 10, bolha_Y: 90, variantes: [{ nome: "Compressor 1.5 HP", rp: "TC-CP-07-15", compra: "1200-G15" }, { nome: "Compressor 2.0 HP", rp: "TC-CP-07-20", compra: "1200-G20" }] },
+                    { id: "compressor", nome: "Compressor", bolha_X: 10, bolha_Y: 90, 
+                      variantes: [
+                          { nome: "Compressor 1.5 HP", rp: "TC-CP-07-15", compra: "1200-G15" },
+                          { nome: "Compressor 2.0 HP", rp: "TC-CP-07-20", compra: "1200-G20" }
+                      ] 
+                    },
                     { id: "condensador", nome: "Condensador", bolha_X: 55, bolha_Y: 80, variantes: [{ nome: "Padrão", rp: "TC-CD-08", compra: "1200-H" }] },
                     { id: "fluxostato", nome: "Fluxostato", bolha_X: -60, bolha_Y: -20, variantes: [{ nome: "Padrão", rp: "TC-FX-09", compra: "1200-I" }] },
                     { id: "evaporador", nome: "Evaporador", bolha_X: -80, bolha_Y: -60, variantes: [{ nome: "Padrão", rp: "TC-EV-10", compra: "1200-J" }] },
@@ -293,7 +271,6 @@
                 ]
             },
             sauna: {
-                id: "sauna",
                 titulo: "Sauna Compact Line - Vista Explodida",
                 variavelSVG: typeof saunaSVG !== 'undefined' ? saunaSVG : null,
                 pecas: [
@@ -302,7 +279,12 @@
                     { id: "boia", nome: "Boia", bolha_X: -50, bolha_Y: -20, variantes: [{ nome: "Padrão", rp: "SA-BO-03", compra: "2000-C" }] },
                     { id: "sensor", nome: "Sensor", bolha_X: 50, bolha_Y: 20, variantes: [{ nome: "Padrão", rp: "SA-SN-04", compra: "2000-D" }] },
                     { id: "termostato", nome: "Termostato", bolha_X: 60, bolha_Y: 30, variantes: [{ nome: "Padrão", rp: "SA-TR-05", compra: "2000-E" }] },
-                    { id: "resistencia", nome: "Resistência", bolha_X: -40, bolha_Y: 40, variantes: [{ nome: "Resistência 6kW", rp: "SA-RS-06-6K", compra: "2000-F1" }, { nome: "Resistência 9kW", rp: "SA-RS-06-9K", compra: "2000-F2" }] },
+                    { id: "resistencia", nome: "Resistência", bolha_X: -40, bolha_Y: 40, 
+                      variantes: [
+                          { nome: "Resistência 6kW", rp: "SA-RS-06-6K", compra: "2000-F1" },
+                          { nome: "Resistência 9kW", rp: "SA-RS-06-9K", compra: "2000-F2" }
+                      ] 
+                    },
                     { id: "reservatorio", nome: "Reservatório", bolha_X: -50, bolha_Y: 100, variantes: [{ nome: "Padrão", rp: "SA-RV-07", compra: "2000-G" }] },
                     { id: "gabinete", nome: "Gabinete", bolha_X: -150, bolha_Y: 35, variantes: [{ nome: "Padrão", rp: "SA-GB-08", compra: "2000-H" }] },
                     { id: "base", nome: "Base", bolha_X: -100, bolha_Y: 40, variantes: [{ nome: "Padrão", rp: "SA-BS-09", compra: "2000-I" }] },
@@ -313,12 +295,14 @@
             }
         };
 
+        // Variáveis Globais de Estado
         let svgNode = null;
         let vbX, vbY, vbW, vbH;
         let initVb = {};
         let animFrameId = null;
         let pecaAtivaId = null;
         let instrucaoEscondida = false;
+        let desenhoTimeout = null;
 
         const svgContent = document.getElementById('svg-content');
         const svgWrapper = document.getElementById('svg-wrapper');
@@ -326,11 +310,10 @@
         const tooltip = document.getElementById("tooltip");
         const nomePeca = document.getElementById("nome_peca");
         const instrucaoMsg = document.getElementById("instrucao-mensagem");
-        const telaLoading = document.getElementById('tela-carregamento');
         const svgNS = "http://www.w3.org/2000/svg";
 
         // =======================================================================
-        // SISTEMA DE CACHE E NAVEGAÇÃO INSTANTÂNEA
+        // FUNÇÕES UTILITÁRIAS
         // =======================================================================
         function ocultarInstrucao() {
             if (!instrucaoEscondida) {
@@ -343,68 +326,19 @@
             if (elementoMenu) {
                 document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('ativo'));
                 elementoMenu.classList.add('ativo');
-                elementoMenu.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
             }
-            
-            isDragging = false;
-            startPinchDist = null;
             pecaAtivaId = null; 
-            tooltip.style.display = "none";
-            
             const produtoInfo = baseDeDados[idProduto];
             document.getElementById('titulo-pagina').innerText = produtoInfo.titulo;
-
-            telaLoading.style.visibility = "visible";
-            telaLoading.style.opacity = "1";
-            document.getElementById('texto-carregamento').innerText = "Carregando " + produtoInfo.titulo.split(' -')[0] + "...";
-
-            setTimeout(() => {
-                document.querySelectorAll('.svg-view').forEach(el => el.style.display = 'none');
-                document.querySelectorAll('.lista-view').forEach(el => el.style.display = 'none');
-
-                let svgView = document.getElementById(`svg-view-${idProduto}`);
-                let listaView = document.getElementById(`lista-view-${idProduto}`);
-
-                if (!svgView) {
-                    svgView = document.createElement('div');
-                    svgView.id = `svg-view-${idProduto}`;
-                    svgView.className = 'svg-view';
-                    svgContent.appendChild(svgView);
-
-                    listaView = document.createElement('div');
-                    listaView.id = `lista-view-${idProduto}`;
-                    listaView.className = 'lista-view';
-                    listaContainer.appendChild(listaView);
-
-                    if (produtoInfo.variavelSVG) {
-                        svgView.innerHTML = produtoInfo.variavelSVG;
-                        svgView.style.display = 'flex';
-                        listaView.style.display = 'block';
-                        iniciarDesenho(produtoInfo, svgView, listaView);
-                    }
-                } 
-                else {
-                    svgView.style.display = 'flex';
-                    listaView.style.display = 'block';
-                    svgNode = svgView.querySelector('svg');
-                    initVb = produtoInfo.initVb;
-                    vbX = initVb.x; vbY = initVb.y; vbW = initVb.w; vbH = initVb.h;
-                    
-                    // RAF Update
-                    requestAnimationFrame(() => {
-                        if(svgNode) svgNode.setAttribute('viewBox', `${vbX} ${vbY} ${vbW} ${vbH}`);
-                    });
-                    
-                    svgView.querySelectorAll('.expandido').forEach(c => c.classList.remove('expandido'));
-                    svgView.querySelectorAll('.focada').forEach(e => e.classList.remove('focada'));
-                    svgNode.classList.remove('modo-foco');
-                }
-
-                setTimeout(() => {
-                    telaLoading.style.opacity = "0";
-                    setTimeout(() => { telaLoading.style.visibility = "hidden"; }, 300);
-                }, 100);
-            }, 50);
+            listaContainer.innerHTML = ""; 
+            svgContent.innerHTML = ""; 
+            
+            if (desenhoTimeout) clearTimeout(desenhoTimeout);
+            
+            if (produtoInfo.variavelSVG) {
+                svgContent.innerHTML = produtoInfo.variavelSVG;
+                desenhoTimeout = setTimeout(() => iniciarDesenho(produtoInfo.pecas), 150);
+            }
         };
 
         function animarViewBox(alvoX, alvoY, alvoW, alvoH) {
@@ -424,21 +358,22 @@
                 vbW = startW + (alvoW - startW) * ease;
                 vbH = startH + (alvoH - startH) * ease;
 
-                if (svgNode) svgNode.setAttribute('viewBox', `${vbX} ${vbY} ${vbW} ${vbH}`);
+                svgNode.setAttribute('viewBox', `${vbX} ${vbY} ${vbW} ${vbH}`);
                 if (progresso < 1) animFrameId = requestAnimationFrame(passoAnima);
             }
             animFrameId = requestAnimationFrame(passoAnima);
         }
 
         // =======================================================================
-        // INICIALIZAÇÃO DO DESENHO E CONSTRUÇÃO (APENAS 1 VEZ POR PRODUTO)
+        // INICIALIZAÇÃO DO DESENHO E CONSTRUÇÃO
         // =======================================================================
-        function iniciarDesenho(produtoInfo, svgView, listaView) {
-            svgNode = svgView.querySelector('svg');
+        function iniciarDesenho(listaDePecas) {
+            svgNode = svgContent.querySelector('svg');
             if(!svgNode) return;
             
             svgNode.classList.remove('modo-foco');
 
+            // --- ESCUDO ANTI-CAD PARA AS BOLHAS ---
             const svgStyle = document.createElementNS(svgNS, "style");
             svgStyle.textContent = `
                 .camada-bolhas circle.bolha-circulo { fill: #ffffff !important; stroke: #00c3ff !important; stroke-width: 1.5px !important; }
@@ -447,6 +382,8 @@
                 .camada-bolhas .grupo-bolha.destaque-ativo text.bolha-texto { fill: #ffffff !important; }
                 .camada-bolhas { transition: opacity 0.3s ease; opacity: 1; pointer-events: none; }
                 .camada-bolhas .grupo-bolha { pointer-events: all !important; cursor: pointer !important; }
+                
+                /* ESCONDE AS BOLHAS COMPLETAMENTE NO MODO FOCO */
                 svg.modo-foco .camada-bolhas { opacity: 0 !important; pointer-events: none !important; }
             `;
             svgNode.appendChild(svgStyle);
@@ -465,9 +402,7 @@
 
             viewBox = svgNode.getAttribute('viewBox') || `0 0 1000 1000`;
             const vbParts = viewBox.trim().split(/\s+|,/).map(parseFloat);
-            
             initVb = { x: vbParts[0], y: vbParts[1], w: vbParts[2], h: vbParts[3] }; 
-            produtoInfo.initVb = { ...initVb };
             vbX = initVb.x; vbY = initVb.y; vbW = initVb.w; vbH = initVb.h;
 
             let scale = vbW / 800; 
@@ -480,20 +415,37 @@
             camadaBolhas.setAttribute("class", "camada-bolhas");
             svgNode.appendChild(camadaBolhas);
 
-            produtoInfo.pecas.forEach((pecaData, index) => {
+            listaDePecas.forEach((pecaData, index) => {
                 const numeroPeca = String(index + 1).padStart(2, '0');
-                const pecaElementoSvg = svgView.querySelector(`#${pecaData.id}`);
+                const pecaElementoSvg = document.getElementById(pecaData.id);
                 
                 let htmlVariantes = "";
                 const listaVariaveis = pecaData.variantes || [];
                 listaVariaveis.forEach(vr => {
-                    htmlVariantes += `<div class="variante-item"><span class="var-nome">${vr.nome}</span><div class="var-cods"><span>RP: ${vr.rp}</span><span>Ref: ${vr.compra}</span></div></div>`;
+                    htmlVariantes += `
+                        <div class="variante-item">
+                            <span class="var-nome">${vr.nome}</span>
+                            <div class="var-cods">
+                                <span>RP: ${vr.rp}</span>
+                                <span>Ref: ${vr.compra}</span>
+                            </div>
+                        </div>
+                    `;
                 });
 
-                const cardId = `card-${produtoInfo.id}-${pecaData.id}`;
-                const cardHtml = `<div class="peca-card" id="${cardId}"><div class="peca-card-header"><div class="peca-numero">${numeroPeca}</div><div class="peca-info"><div class="peca-nome">${pecaData.nome}</div></div></div><div class="peca-variantes">${htmlVariantes}</div></div>`;
-                listaView.insertAdjacentHTML('beforeend', cardHtml);
-                const cardElemento = listaView.querySelector(`#${cardId}`);
+                const cardHtml = `
+                    <div class="peca-card" id="card-${pecaData.id}">
+                        <div class="peca-card-header">
+                            <div class="peca-numero">${numeroPeca}</div>
+                            <div class="peca-info">
+                                <div class="peca-nome">${pecaData.nome}</div>
+                            </div>
+                        </div>
+                        <div class="peca-variantes">${htmlVariantes}</div>
+                    </div>
+                `;
+                listaContainer.insertAdjacentHTML('beforeend', cardHtml);
+                const cardElemento = document.getElementById(`card-${pecaData.id}`);
                 const cardHeader = cardElemento.querySelector('.peca-card-header');
 
                 if (pecaElementoSvg) {
@@ -502,33 +454,32 @@
                     
                     if (bbox.width > 0 && bbox.height > 0) {
                         
-                        const hitboxGrupo = document.createElementNS(svgNS, "g");
-                        hitboxGrupo.setAttribute("class", "hitbox-peca");
-                        Array.from(pecaElementoSvg.children).forEach(filho => {
-                            if (filho.tagName !== "g" || !filho.classList.contains("hitbox-peca")) {
-                                const clone = filho.cloneNode(true);
-                                clone.removeAttribute("id");
-                                if (clone.querySelectorAll) clone.querySelectorAll('*').forEach(el => el.removeAttribute("id"));
-                                hitboxGrupo.appendChild(clone);
-                            }
-                        });
-                        pecaElementoSvg.appendChild(hitboxGrupo);
-
-                        let centroX = bbox.x + (bbox.width / 2); let centroY = bbox.y + (bbox.height / 2);
+                        let centroX = bbox.x + (bbox.width / 2);
+                        let centroY = bbox.y + (bbox.height / 2);
+                        
                         const ptMin = svgNode.createSVGPoint(); ptMin.x = bbox.x; ptMin.y = bbox.y;
                         const ptMax = svgNode.createSVGPoint(); ptMax.x = bbox.x + bbox.width; ptMax.y = bbox.y + bbox.height;
+
                         const ptCenter = svgNode.createSVGPoint(); ptCenter.x = centroX; ptCenter.y = centroY;
-                        const ctmElement = pecaElementoSvg.getScreenCTM(); const ctmSvg = svgNode.getScreenCTM();
+                        const ctmElement = pecaElementoSvg.getScreenCTM(); 
+                        const ctmSvg = svgNode.getScreenCTM();
                         
                         let absW = bbox.width, absH = bbox.height;
+
                         if (ctmElement && ctmSvg) {
                             const matrix = ctmSvg.inverse().multiply(ctmElement);
-                            const absCenter = ptCenter.matrixTransform(matrix); centroX = absCenter.x; centroY = absCenter.y;
-                            const absPMin = ptMin.matrixTransform(matrix); const absPMax = ptMax.matrixTransform(matrix);
-                            absW = Math.abs(absPMax.x - absPMin.x); absH = Math.abs(absPMax.y - absPMin.y);
+                            
+                            const absCenter = ptCenter.matrixTransform(matrix);
+                            centroX = absCenter.x; centroY = absCenter.y;
+                            
+                            const absPMin = ptMin.matrixTransform(matrix);
+                            const absPMax = ptMax.matrixTransform(matrix);
+                            absW = Math.abs(absPMax.x - absPMin.x);
+                            absH = Math.abs(absPMax.y - absPMin.y);
                         }
 
-                        const bolhaX = centroX + (pecaData.bolha_X * scale); const bolhaY = centroY + (pecaData.bolha_Y * scale);
+                        const bolhaX = centroX + (pecaData.bolha_X * scale);
+                        const bolhaY = centroY + (pecaData.bolha_Y * scale);
 
                         const grupoBolha = document.createElementNS(svgNS, "g");
                         grupoBolha.setAttribute("class", "grupo-bolha");
@@ -541,7 +492,8 @@
                         pontoAncora.setAttribute("cx", centroX); pontoAncora.setAttribute("cy", centroY); pontoAncora.setAttribute("r", raioAncora); pontoAncora.setAttribute("fill", "var(--cor-destaque)");
 
                         const linha = document.createElementNS(svgNS, "line");
-                        linha.setAttribute("class", "linha-tracejada"); linha.setAttribute("x1", centroX); linha.setAttribute("y1", centroY); linha.setAttribute("x2", bolhaX); linha.setAttribute("y2", bolhaY);
+                        linha.setAttribute("class", "linha-tracejada");
+                        linha.setAttribute("x1", centroX); linha.setAttribute("y1", centroY); linha.setAttribute("x2", bolhaX); linha.setAttribute("y2", bolhaY);
                         linha.setAttribute("stroke", "var(--cor-destaque)"); linha.setAttribute("stroke-width", "1.2"); linha.setAttribute("stroke-dasharray", "4,4");
 
                         const circulo = document.createElementNS(svgNS, "circle");
@@ -551,38 +503,54 @@
                         texto.setAttribute("x", bolhaX); texto.setAttribute("y", bolhaY + offsetTexto); texto.setAttribute("font-size", tamanhoFonte + "px");
                         texto.setAttribute("text-anchor", "middle"); texto.setAttribute("class", "bolha-texto"); texto.textContent = numeroPeca;
 
-                        grupoBolha.appendChild(linhaHitbox); grupoBolha.appendChild(pontoAncora); grupoBolha.appendChild(linha); grupoBolha.appendChild(circulo); grupoBolha.appendChild(texto);
+                        grupoBolha.appendChild(linhaHitbox); 
+                        grupoBolha.appendChild(pontoAncora); grupoBolha.appendChild(linha); grupoBolha.appendChild(circulo); grupoBolha.appendChild(texto);
                         camadaBolhas.appendChild(grupoBolha);
 
-                        const acionarFoco = (e) => {
-                            if (e) e.stopPropagation(); 
+                        // --- 3. LÓGICA DE FOCO (CLICK) E ZOOM INTELIGENTE ---
+                        const acionarFoco = () => {
                             ocultarInstrucao(); 
 
                             if (pecaAtivaId === pecaData.id) {
-                                svgView.querySelectorAll('.expandido').forEach(c => c.classList.remove('expandido'));
-                                svgView.querySelectorAll('.focada').forEach(e => e.classList.remove('focada'));
-                                svgNode.classList.remove('modo-foco'); pecaAtivaId = null;
-                                animarViewBox(initVb.x, initVb.y, initVb.w, initVb.h); return;
+                                document.querySelectorAll('.peca-card').forEach(c => c.classList.remove('expandido'));
+                                document.querySelectorAll('.focada').forEach(e => e.classList.remove('focada'));
+                                svgNode.classList.remove('modo-foco'); 
+                                pecaAtivaId = null;
+                                animarViewBox(initVb.x, initVb.y, initVb.w, initVb.h);
+                                return;
                             }
 
-                            svgView.querySelectorAll('.expandido').forEach(c => c.classList.remove('expandido'));
-                            svgView.querySelectorAll('.focada').forEach(e => e.classList.remove('focada'));
+                            document.querySelectorAll('.peca-card').forEach(c => c.classList.remove('expandido'));
+                            document.querySelectorAll('.focada').forEach(e => e.classList.remove('focada'));
                             
                             pecaAtivaId = pecaData.id;
                             svgNode.classList.add('modo-foco'); 
-                            cardElemento.classList.add('expandido'); pecaElementoSvg.classList.add('focada'); 
+                            cardElemento.classList.add('expandido');
+                            pecaElementoSvg.classList.add('focada'); 
+                            // grupoBolha.classList.add('focada'); // Não precisamos mais, as bolhas somem!
+                            
                             cardElemento.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                             tooltip.style.display = "none";
 
-                            let alvoW = absW * 1.8; let alvoH = absH * 1.8;
-                            const aspectoOriginal = initVb.w / initVb.h; const aspectoAlvo = alvoW / alvoH;
+                            let alvoW = absW * 1.8; 
+                            let alvoH = absH * 1.8;
 
-                            if (aspectoAlvo > aspectoOriginal) alvoH = alvoW / aspectoOriginal;
-                            else alvoW = alvoH * aspectoOriginal;
+                            const aspectoOriginal = initVb.w / initVb.h;
+                            const aspectoAlvo = alvoW / alvoH;
+
+                            if (aspectoAlvo > aspectoOriginal) {
+                                alvoH = alvoW / aspectoOriginal;
+                            } else {
+                                alvoW = alvoH * aspectoOriginal;
+                            }
 
                             if (alvoW < initVb.w * 0.15) { alvoW = initVb.w * 0.15; alvoH = initVb.h * 0.15; }
                             if (alvoW > initVb.w) { alvoW = initVb.w; alvoH = initVb.h; }
-                            animarViewBox(centroX - (alvoW / 2), centroY - (alvoH / 2), alvoW, alvoH);
+
+                            const alvoX = centroX - (alvoW / 2); 
+                            const alvoY = centroY - (alvoH / 2);
+
+                            animarViewBox(alvoX, alvoY, alvoW, alvoH);
                         };
 
                         const ativarHover = () => {
@@ -599,26 +567,48 @@
                             if(pecaAtivaId === pecaData.id) return; 
                             
                             nomePeca.innerText = pecaData.nome;
-                            const rpTooltip = document.getElementById("cod_rp"); const compTooltip = document.getElementById("cod_compra");
+                            
+                            const rpTooltip = document.getElementById("cod_rp");
+                            const compTooltip = document.getElementById("cod_compra");
                             
                             if (pecaData.variantes && pecaData.variantes.length > 1) {
-                                rpTooltip.innerText = "Múltiplos (Clique p/ ver)"; compTooltip.innerText = "Múltiplos (Clique p/ ver)";
+                                rpTooltip.innerText = "Múltiplos (Clique p/ ver)";
+                                compTooltip.innerText = "Múltiplos (Clique p/ ver)";
                             } else if (pecaData.variantes && pecaData.variantes.length === 1) {
-                                rpTooltip.innerText = pecaData.variantes[0].rp; compTooltip.innerText = pecaData.variantes[0].compra;
+                                rpTooltip.innerText = pecaData.variantes[0].rp;
+                                compTooltip.innerText = pecaData.variantes[0].compra;
                             }
                             
                             tooltip.style.display = "block"; 
+                            
                             let posX = evento.pageX + 15; let posY = evento.pageY + 15;
                             if (posX + tooltip.offsetWidth > window.innerWidth) posX = evento.pageX - tooltip.offsetWidth - 15;
                             if (posY + tooltip.offsetHeight > window.innerHeight) posY = evento.pageY - tooltip.offsetHeight - 15;
-                            tooltip.style.left = posX + "px"; tooltip.style.top = posY + "px";
+                            
+                            tooltip.style.left = posX + "px";
+                            tooltip.style.top = posY + "px";
                         };
 
-                        pecaElementoSvg.addEventListener("mouseenter", ativarHover); pecaElementoSvg.addEventListener("mousemove", moverTooltip);
-                        pecaElementoSvg.addEventListener("mouseleave", desativarHover); pecaElementoSvg.addEventListener("click", acionarFoco);
-                        grupoBolha.addEventListener("mouseenter", ativarHover); grupoBolha.addEventListener("mousemove", moverTooltip);
-                        grupoBolha.addEventListener("mouseleave", desativarHover); grupoBolha.addEventListener("click", acionarFoco);
-                        cardHeader.addEventListener("mouseenter", ativarHover); cardHeader.addEventListener("mouseleave", desativarHover);
+                        pecaElementoSvg.addEventListener("mouseenter", ativarHover);
+                        pecaElementoSvg.addEventListener("mousemove", moverTooltip);
+                        pecaElementoSvg.addEventListener("mouseleave", desativarHover);
+                        pecaElementoSvg.addEventListener("click", acionarFoco);
+                        
+                        pecaElementoSvg.addEventListener("touchstart", (e) => {
+                             if(e.touches.length === 1) acionarFoco();
+                        }, {passive: true});
+
+                        grupoBolha.addEventListener("mouseenter", ativarHover);
+                        grupoBolha.addEventListener("mousemove", moverTooltip);
+                        grupoBolha.addEventListener("mouseleave", desativarHover);
+                        grupoBolha.addEventListener("click", acionarFoco);
+                        
+                        grupoBolha.addEventListener("touchstart", (e) => {
+                             if(e.touches.length === 1) acionarFoco();
+                        }, {passive: true});
+
+                        cardHeader.addEventListener("mouseenter", ativarHover);
+                        cardHeader.addEventListener("mouseleave", desativarHover);
                         cardHeader.addEventListener("click", acionarFoco);
                     }
                 } else {
@@ -629,105 +619,139 @@
         }
 
         // ===================================================================================
-        // NAVEGAÇÃO E ZOOM (ALTA PERFORMANCE HARDWARE)
+        // NAVEGAÇÃO, ZOOM E EVENTOS TOUCH GLOBAIS (MOBILE)
         // ===================================================================================
-        let isDragging = false; 
-        let startMouseX, startMouseY;
-        let startPinchDist = null;
-        let isUpdatingViewBox = false;
-
-        function performViewBoxUpdate() {
-            if (!isUpdatingViewBox && svgNode) {
-                isUpdatingViewBox = true;
-                requestAnimationFrame(() => {
-                    if (svgNode) svgNode.setAttribute('viewBox', `${vbX} ${vbY} ${vbW} ${vbH}`);
-                    isUpdatingViewBox = false;
-                });
-            }
-        }
-
-        function aplicarZoomManual(fator) {
-            if(!svgNode) return;
-            ocultarInstrucao(); pecaAtivaId = null; 
-            document.querySelectorAll('.expandido').forEach(c => c.classList.remove('expandido'));
-            document.querySelectorAll('.focada').forEach(e => e.classList.remove('focada'));
-            svgNode.classList.remove('modo-foco'); 
-
-            const novoW = vbW * fator; const novoH = vbH * fator;
-            animarViewBox(vbX + (vbW - novoW) / 2, vbY + (vbH - novoH) / 2, novoW, novoH);
-        }
-
         window.addEventListener('load', () => {
-            
+            let isDragging = false; 
+            let startMouseX, startMouseY;
+            let startPinchDist = null;
+            let startVbW, startVbH;
+
+            function aplicarZoomManual(fator) {
+                if(!svgNode) return;
+                ocultarInstrucao(); 
+                
+                pecaAtivaId = null; 
+                document.querySelectorAll('.expandido').forEach(c => c.classList.remove('expandido'));
+                document.querySelectorAll('.focada').forEach(e => e.classList.remove('focada'));
+                svgNode.classList.remove('modo-foco'); 
+
+                const novoW = vbW * fator; const novoH = vbH * fator;
+                const novoX = vbX + (vbW - novoW) / 2; const novoY = vbY + (vbH - novoH) / 2;
+                animarViewBox(novoX, novoY, novoW, novoH);
+            }
+
             svgWrapper.addEventListener('wheel', (e) => {
-                e.preventDefault(); ocultarInstrucao(); 
+                e.preventDefault();
+                ocultarInstrucao(); 
+
                 if (pecaAtivaId) {
                     pecaAtivaId = null;
                     document.querySelectorAll('.expandido, .focada').forEach(el => el.classList.remove('expandido', 'focada'));
                     svgNode.classList.remove('modo-foco');
                 }
                 const fator = e.deltaY > 0 ? 1.1 : 0.9;
-                const pt = svgNode.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+                
+                const pt = svgNode.createSVGPoint();
+                pt.x = e.clientX; pt.y = e.clientY;
                 const ctm = svgNode.getScreenCTM();
                 if(ctm) {
                     const svgP = pt.matrixTransform(ctm.inverse());
-                    vbX = svgP.x - (svgP.x - vbX) * fator; vbY = svgP.y - (svgP.y - vbY) * fator;
+                    vbX = svgP.x - (svgP.x - vbX) * fator;
+                    vbY = svgP.y - (svgP.y - vbY) * fator;
                     vbW *= fator; vbH *= fator;
-                    performViewBoxUpdate();
+                    svgNode.setAttribute('viewBox', `${vbX} ${vbY} ${vbW} ${vbH}`);
                 }
             });
 
             document.getElementById('btn-zoom-in').addEventListener('click', () => aplicarZoomManual(0.7));
             document.getElementById('btn-zoom-out').addEventListener('click', () => aplicarZoomManual(1.3));
             document.getElementById('btn-zoom-reset').addEventListener('click', () => {
-                pecaAtivaId = null; document.querySelectorAll('.expandido, .focada').forEach(c => c.classList.remove('expandido', 'focada'));
-                if(svgNode) svgNode.classList.remove('modo-foco'); animarViewBox(initVb.x, initVb.y, initVb.w, initVb.h);
+                pecaAtivaId = null;
+                document.querySelectorAll('.expandido').forEach(c => c.classList.remove('expandido'));
+                document.querySelectorAll('.focada').forEach(e => e.classList.remove('focada'));
+                if(svgNode) svgNode.classList.remove('modo-foco');
+                animarViewBox(initVb.x, initVb.y, initVb.w, initVb.h);
             });
 
-            svgWrapper.addEventListener('mousedown', (e) => { isDragging = true; startMouseX = e.clientX; startMouseY = e.clientY; ocultarInstrucao(); tooltip.style.display = "none"; });
+            svgWrapper.addEventListener('mousedown', (e) => { 
+                isDragging = true; 
+                startMouseX = e.clientX; 
+                startMouseY = e.clientY; 
+                ocultarInstrucao(); 
+                tooltip.style.display = "none"; 
+            });
             window.addEventListener('mousemove', (e) => {
                 if (!isDragging || !svgNode) return;
-                vbX += (startMouseX - e.clientX) * (vbW / svgWrapper.clientWidth);
-                vbY += (startMouseY - e.clientY) * (vbH / svgWrapper.clientHeight);
-                performViewBoxUpdate();
+                const dx = (startMouseX - e.clientX) * (vbW / svgWrapper.clientWidth);
+                const dy = (startMouseY - e.clientY) * (vbH / svgWrapper.clientHeight);
+                vbX += dx; vbY += dy;
+                svgNode.setAttribute('viewBox', `${vbX} ${vbY} ${vbW} ${vbH}`);
                 startMouseX = e.clientX; startMouseY = e.clientY;
             });
             window.addEventListener('mouseup', () => { isDragging = false; });
             svgWrapper.addEventListener('mouseleave', () => { isDragging = false; tooltip.style.display = "none"; });
             
-            // Toque Confinado apenas ao SVG Wrapper (Bloqueia a lentidão Global do Mobile)
+            // Eventos Touch para Mobile
             svgWrapper.addEventListener('touchstart', (e) => {
                 if (e.touches.length === 1) {
-                    isDragging = true; startMouseX = e.touches[0].clientX; startMouseY = e.touches[0].clientY; ocultarInstrucao();
+                    isDragging = true;
+                    startMouseX = e.touches[0].clientX;
+                    startMouseY = e.touches[0].clientY;
+                    ocultarInstrucao();
                 } else if (e.touches.length === 2) {
                     isDragging = false; 
-                    const dx = e.touches[0].clientX - e.touches[1].clientX; const dy = e.touches[0].clientY - e.touches[1].clientY;
+                    const dx = e.touches[0].clientX - e.touches[1].clientX;
+                    const dy = e.touches[0].clientY - e.touches[1].clientY;
                     startPinchDist = Math.sqrt(dx * dx + dy * dy);
+                    startVbW = vbW;
+                    startVbH = vbH;
                 }
             }, { passive: false });
 
-            svgWrapper.addEventListener('touchmove', (e) => {
+            window.addEventListener('touchmove', (e) => {
                 if (isDragging && e.touches.length === 1 && svgNode) {
                     e.preventDefault(); 
-                    vbX += (startMouseX - e.touches[0].clientX) * (vbW / svgWrapper.clientWidth);
-                    vbY += (startMouseY - e.touches[0].clientY) * (vbH / svgWrapper.clientHeight);
-                    performViewBoxUpdate();
-                    startMouseX = e.touches[0].clientX; startMouseY = e.touches[0].clientY;
+                    const dx = (startMouseX - e.touches[0].clientX) * (vbW / svgWrapper.clientWidth);
+                    const dy = (startMouseY - e.touches[0].clientY) * (vbH / svgWrapper.clientHeight);
+                    vbX += dx; vbY += dy;
+                    svgNode.setAttribute('viewBox', `${vbX} ${vbY} ${vbW} ${vbH}`);
+                    startMouseX = e.touches[0].clientX;
+                    startMouseY = e.touches[0].clientY;
                 } else if (e.touches.length === 2 && startPinchDist && svgNode) {
                     e.preventDefault();
-                    if (pecaAtivaId) { pecaAtivaId = null; document.querySelectorAll('.expandido, .focada').forEach(el => el.classList.remove('expandido', 'focada')); svgNode.classList.remove('modo-foco'); }
-                    const dx = e.touches[0].clientX - e.touches[1].clientX; const dy = e.touches[0].clientY - e.touches[1].clientY;
+                    
+                    if (pecaAtivaId) {
+                        pecaAtivaId = null;
+                        document.querySelectorAll('.expandido, .focada').forEach(el => el.classList.remove('expandido', 'focada'));
+                        svgNode.classList.remove('modo-foco');
+                    }
+
+                    const dx = e.touches[0].clientX - e.touches[1].clientX;
+                    const dy = e.touches[0].clientY - e.touches[1].clientY;
                     const currentDist = Math.sqrt(dx * dx + dy * dy);
+                    
                     const scale = startPinchDist / currentDist; 
-                    const novoW = vbW * scale; const novoH = vbH * scale;
-                    vbX = vbX + (vbW - novoW) / 2; vbY = vbY + (vbH - novoH) / 2; vbW = novoW; vbH = novoH;
-                    performViewBoxUpdate();
+                    const novoW = startVbW * scale;
+                    const novoH = startVbH * scale;
+
+                    vbX = vbX + (vbW - novoW) / 2;
+                    vbY = vbY + (vbH - novoH) / 2;
+                    vbW = novoW;
+                    vbH = novoH;
+
+                    svgNode.setAttribute('viewBox', `${vbX} ${vbY} ${vbW} ${vbH}`);
+                    
                     startPinchDist = currentDist;
+                    startVbW = vbW;
+                    startVbH = vbH;
                 }
             }, { passive: false });
 
-            svgWrapper.addEventListener('touchend', () => { isDragging = false; startPinchDist = null; });
-            svgWrapper.addEventListener('touchcancel', () => { isDragging = false; startPinchDist = null; });
+            window.addEventListener('touchend', () => {
+                isDragging = false;
+                startPinchDist = null;
+            });
 
             carregarProduto('trocador');
         });
