@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Sodraparts - Catálogo de Peças de Reposição</title>
+    <title>Sodraparts - Catálogo de Peças de Reposição (Otimizado)</title>
     
     <link rel="icon" type="image/x-icon" href="./icone.ico" />
     
@@ -218,8 +218,8 @@
         }
     </style>
     
-    <script src="trocador_svg.js"></script>
-    <script src="sauna_svg.js"></script>
+    <script src="trocador_svg.min.js"></script>
+    <script src="sauna_svg.min.js"></script>
 
 </head>
 <body>
@@ -494,7 +494,7 @@
                         // --- HITBOX LEVE ---
                         // No celular, clonar todos os vetores de cada peça dobra o DOM do SVG e deixa o toque/zoom lento.
                         // Por isso a hitbox magnética completa fica apenas no desktop; no mobile usamos as bolhas e o card.
-                        if (!isMobile) {
+                        if (false) {
                             const hitboxGrupo = document.createElementNS(svgNS, "g");
                             hitboxGrupo.setAttribute("class", "hitbox-peca");
                             Array.from(pecaElementoSvg.children).forEach(filho => {
