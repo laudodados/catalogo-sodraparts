@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Sodraparts - Catálogo de Peças de Reposição</title>
-
-     <link rel="icon" type="image/x-icon" href="icone.ico" />
+    
+    <link rel="icon" type="image/x-icon" href="./icone.ico" />
     
     <style>
         /* ==========================================================================
@@ -56,7 +56,6 @@
         .svg-wrapper:active { cursor: grabbing; }
         #svg-content { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
         
-        /* PERFORMANCE INSTANTÂNEA: Vector-effect global */
         svg { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
         svg path, svg line, svg polygon, svg rect, svg circle, svg polyline, svg ellipse { 
             vector-effect: non-scaling-stroke !important; 
@@ -71,11 +70,17 @@
         #loading { position: absolute; font-size: 18px; color: var(--cor-primaria); font-weight: bold; display: none; }
 
         /* ==========================================================================
-           3. ESTILIZAÇÃO DO DESENHO E LÓGICA DE FOCO IMERSIVA
+           3. ESTILIZAÇÃO DO DESENHO E HITBOX AVANÇADA (O FIM DOS CLIQUES FANTASMAS)
            ========================================================================== */
-        .peca-interativa { cursor: pointer; pointer-events: all; transition: opacity 0.4s ease; }
         
-        /* HOVER: Ilumina o contorno. Não tocamos no "fill" para não bugar o CAD. */
+        .peca-interativa { 
+            cursor: pointer; 
+            /* O SEGREDO: 'visiblePainted' garante que áreas vazias e transparentes não sejam clicáveis */
+            pointer-events: visiblePainted; 
+            transition: opacity 0.2s ease; 
+        }
+        
+        /* HOVER NORMAL */
         .peca-interativa.destaque-ativo path,
         .peca-interativa.destaque-ativo line,
         .peca-interativa.destaque-ativo polygon,
@@ -87,7 +92,7 @@
             stroke-width: 1.8px !important;
         }
         
-        /* CLIQUE (FOCO): Destaque da linha em azul mais forte */
+        /* FOCO NORMAL */
         .peca-interativa.focada path,
         .peca-interativa.focada line,
         .peca-interativa.focada polygon,
@@ -99,13 +104,26 @@
             stroke-width: 2.2px !important;
         }
 
-        /* --- MODO FOCO IMERSIVO --- */
-        /* Ofusca todas as peças que NÃO estão focadas (Aplicado ao grupo .peca-interativa inteiro para preservar brancos) */
+        /* --- HITBOX MAGNÉTICA --- */
+        /* Esta classe garante que as "linhas invisíveis" da peça ficam muito fáceis de tocar, 
+           anulando os problemas do telemóvel e ignorando peças gigantes atrás dela */
+        .peca-interativa .hitbox-peca path,
+        .peca-interativa .hitbox-peca line,
+        .peca-interativa .hitbox-peca polygon,
+        .peca-interativa .hitbox-peca rect,
+        .peca-interativa .hitbox-peca circle,
+        .peca-interativa .hitbox-peca polyline,
+        .peca-interativa .hitbox-peca ellipse {
+            stroke: rgba(255, 255, 255, 0) !important; /* Transparente puro */
+            stroke-width: 18px !important; /* 18px de "gordura" invisível para apanhar o dedo */
+            fill: none !important;
+            pointer-events: stroke !important;
+        }
+
+        /* MODO FOCO IMERSIVO */
         svg.modo-foco .peca-interativa:not(.focada) {
             opacity: 0.15;
         }
-
-        /* Garante que a peça focada continua sólida a 100% */
         svg.modo-foco .peca-interativa.focada {
             opacity: 1 !important;
         }
@@ -181,7 +199,6 @@
         }
     </style>
     
-    <!-- CARREGAMENTO DOS FICHEIROS SVG EXTERNOS -->
     <script src="trocador_svg.js"></script>
     <script src="sauna_svg.js"></script>
 
@@ -190,7 +207,7 @@
 
     <header>
         <div class="logo-container">
-            <img src="logo_sodraparts.png" alt="Sodraparts" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+            <img src="./logo_sodraparts.png?v=3" alt="Sodraparts" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
             <span class="logo-fallback" style="display:none;">SODRAPARTS</span>
         </div>
         <div class="header-title" id="titulo-pagina">Selecione um Produto...</div>
@@ -228,7 +245,6 @@
 
     </div>
 
-    <!-- CAIXA DE INFORMAÇÕES FLUTUANTE (Tooltip) -->
     <div id="tooltip">
         <strong id="nome_peca">Nome da Peça</strong><br />
         Cód RP: <span id="cod_rp"></span><br />
@@ -297,7 +313,6 @@
             }
         };
 
-        // Variáveis Globais de Estado
         let svgNode = null;
         let vbX, vbY, vbW, vbH;
         let initVb = {};
@@ -375,7 +390,7 @@
             
             svgNode.classList.remove('modo-foco');
 
-            // --- ESCUDO ANTI-CAD PARA AS BOLHAS ---
+            // --- ESTILOS PROTEGIDOS PARA AS BOLHAS ---
             const svgStyle = document.createElementNS(svgNS, "style");
             svgStyle.textContent = `
                 .camada-bolhas circle.bolha-circulo { fill: #ffffff !important; stroke: #00c3ff !important; stroke-width: 1.5px !important; }
@@ -385,7 +400,6 @@
                 .camada-bolhas { transition: opacity 0.3s ease; opacity: 1; pointer-events: none; }
                 .camada-bolhas .grupo-bolha { pointer-events: all !important; cursor: pointer !important; }
                 
-                /* ESCONDE AS BOLHAS COMPLETAMENTE NO MODO FOCO */
                 svg.modo-foco .camada-bolhas { opacity: 0 !important; pointer-events: none !important; }
             `;
             svgNode.appendChild(svgStyle);
@@ -456,6 +470,24 @@
                     
                     if (bbox.width > 0 && bbox.height > 0) {
                         
+                        // --- ENGENHARIA DE HITBOX: Fio magnético ---
+                        const hitboxGrupo = document.createElementNS(svgNS, "g");
+                        hitboxGrupo.setAttribute("class", "hitbox-peca");
+                        
+                        // Clona apenas os vetores reais da peça
+                        Array.from(pecaElementoSvg.children).forEach(filho => {
+                            if (filho.tagName !== "g" || !filho.classList.contains("hitbox-peca")) {
+                                const clone = filho.cloneNode(true);
+                                clone.removeAttribute("id");
+                                if (clone.querySelectorAll) {
+                                    clone.querySelectorAll('*').forEach(el => el.removeAttribute("id"));
+                                }
+                                hitboxGrupo.appendChild(clone);
+                            }
+                        });
+                        pecaElementoSvg.appendChild(hitboxGrupo);
+                        // ----------------------------------------------
+
                         let centroX = bbox.x + (bbox.width / 2);
                         let centroY = bbox.y + (bbox.height / 2);
                         
@@ -509,8 +541,8 @@
                         grupoBolha.appendChild(pontoAncora); grupoBolha.appendChild(linha); grupoBolha.appendChild(circulo); grupoBolha.appendChild(texto);
                         camadaBolhas.appendChild(grupoBolha);
 
-                        // --- 3. LÓGICA DE FOCO (CLICK) E ZOOM INTELIGENTE ---
-                        const acionarFoco = () => {
+                        const acionarFoco = (e) => {
+                            if (e) e.stopPropagation(); 
                             ocultarInstrucao(); 
 
                             if (pecaAtivaId === pecaData.id) {
@@ -529,7 +561,6 @@
                             svgNode.classList.add('modo-foco'); 
                             cardElemento.classList.add('expandido');
                             pecaElementoSvg.classList.add('focada'); 
-                            // grupoBolha.classList.add('focada'); // Não precisamos mais, as bolhas somem!
                             
                             cardElemento.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                             tooltip.style.display = "none";
@@ -594,21 +625,14 @@
                         pecaElementoSvg.addEventListener("mouseenter", ativarHover);
                         pecaElementoSvg.addEventListener("mousemove", moverTooltip);
                         pecaElementoSvg.addEventListener("mouseleave", desativarHover);
+                        // O uso nativo de click previne os ghost clicks em celulares quando user-scalable=no
                         pecaElementoSvg.addEventListener("click", acionarFoco);
                         
-                        pecaElementoSvg.addEventListener("touchstart", (e) => {
-                             if(e.touches.length === 1) acionarFoco();
-                        }, {passive: true});
-
                         grupoBolha.addEventListener("mouseenter", ativarHover);
                         grupoBolha.addEventListener("mousemove", moverTooltip);
                         grupoBolha.addEventListener("mouseleave", desativarHover);
                         grupoBolha.addEventListener("click", acionarFoco);
                         
-                        grupoBolha.addEventListener("touchstart", (e) => {
-                             if(e.touches.length === 1) acionarFoco();
-                        }, {passive: true});
-
                         cardHeader.addEventListener("mouseenter", ativarHover);
                         cardHeader.addEventListener("mouseleave", desativarHover);
                         cardHeader.addEventListener("click", acionarFoco);
@@ -620,9 +644,6 @@
             });
         }
 
-        // ===================================================================================
-        // NAVEGAÇÃO, ZOOM E EVENTOS TOUCH GLOBAIS (MOBILE)
-        // ===================================================================================
         window.addEventListener('load', () => {
             let isDragging = false; 
             let startMouseX, startMouseY;
@@ -694,7 +715,7 @@
             window.addEventListener('mouseup', () => { isDragging = false; });
             svgWrapper.addEventListener('mouseleave', () => { isDragging = false; tooltip.style.display = "none"; });
             
-            // Eventos Touch para Mobile
+            // Toque para Telemovel
             svgWrapper.addEventListener('touchstart', (e) => {
                 if (e.touches.length === 1) {
                     isDragging = true;
